@@ -97,10 +97,10 @@ class NumberNode(ASTNode):
         return f"{self.number}"
     
 class UnOpNode(ASTNode):
-    def __init__(self, value: ASTNode, sign: Token) -> None:
+    def __init__(self, sign: Token, value: ASTNode) -> None:
         super().__init__(value.type, sign.pos)
-        self.value = value
         self.sign = sign
+        self.value = value
 
     def __repr__(self) -> str:
         return f"(SIGN:{self.sign}, {self.value})"

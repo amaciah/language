@@ -114,7 +114,7 @@ class Parser:
                 return None, err
             
             # Correct exit
-            return UnOpNode(node, sign), None
+            return UnOpNode(sign, node), None
         
         # Consume numeric value
         return self.nval()
