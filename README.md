@@ -1,13 +1,13 @@
 # Language
 
 ## About
-I'm writing a small programming language for fun, with the idea of both being a learning experience and a potentially useful tool in the future
+I am writing a small programming language for fun, with the idea of both being a learning experience and a potentially useful tool in the future
 
 ## The language
 Two equivalent implementations, in C and Python, are provided. Python serves as a pseudocode/brainstorm tool, whereas C should offer a better performance in more complex programs.
 
 ## Syntax
-The current syntax as a context-free grammar can be found in grammar.txt. At its current state, the language supports real maths, with int and float data types supported
+The current syntax as a context-free grammar can be found in grammar.txt. At its current state, the language supports real math, with int and float data types supported
 
 ## Project structure
 Regardless of the implementation, the structure follows a similar pattern:
