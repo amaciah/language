@@ -1,0 +1,38 @@
+// Symbols:
+{} -> 0-n
+[] -> 0-1
+|  -> or
+
+
+// Grammar (v2)
+
+prog ::= expr
+
+expr ::= term { ( ADD | SUB ) expr }
+
+term ::= fact { ( MUL | DIV | MOD ) term }
+
+fact ::= nval
+       | LPA expr RPA
+       | ( ADD | SUB ) fact
+
+nval ::= INT | FLT
+
+
+// Grammar (v1)
+
+prog ::= expr
+
+expr ::= term { ( ADD | SUB ) term }
+
+term ::= fact { ( MUL | DIV | MOD ) fact }
+
+fact ::= LPA expr RPA
+       | rval
+
+rval ::= sval
+       | nval
+
+sval ::= ( ADD | SUB ) fact
+
+nval ::= INT | FLT
