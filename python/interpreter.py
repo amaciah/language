@@ -48,12 +48,6 @@ class Interpreter:
     
     def visit_BinOpNode(self, node: BinOpNode) -> Tuple[DataType, Error]:
 
-        if node.right.type != node.type:
-            return None, RuntimeError(
-                node.pos,
-                f"{node.right} is not of type {node.type}"
-            )
-
         left, err = self.visit(node.left)
         if err:
             return None, err
