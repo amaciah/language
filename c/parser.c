@@ -75,11 +75,89 @@ ParserResult bin_op(Parser* p, ParserResult (*func)(Parser*), TokenType ops[], i
 }
 
 
+// Private function declarations
+
+/**
+ * Consumes the program rule (root of the grammar):
+ * 
+ * ```prog ::= expr```
+ * 
+ * @param p The parser
+ * 
+ * @return The result of parsing the rule
+ * 
+ * @note In case of error, the ```root``` field is ```NULL```
+ * and the ```err``` field contains the error
+ */
+ParserResult prog(Parser* p);
+
+/**
+ * Consumes a math expression:
+ * 
+ * ```expr ::= term { ('+' | '-') term }```
+ * 
+ * @param p The parser
+ * 
+ * @return The result of parsing the rule
+ * 
+ * @note In case of error, the ```root``` field is ```NULL```
+ * and the ```err``` field contains the error
+ */
+ParserResult expr(Parser* p);
+
+/**
+ * Consumes a math term:
+ * 
+ * ```term ::= fact { ('*' | '/' | '%') fact }```
+ * 
+ * @param p The parser
+ * 
+ * @return The result of parsing the rule
+ * 
+ * @note In case of error, the ```root``` field is ```NULL```
+ * and the ```err``` field contains the error
+ */
+ParserResult term(Parser* p);
+
+/**
+ * Consumes a math factor:
+ * 
+ * ```fact ::= '(' expr ')' | ( '+' | '-' ) fact | nval```
+ * 
+ * @param p The parser
+ * 
+ * @return The result of parsing the rule
+ * 
+ * @note In case of error, the ```root``` field is ```NULL```
+ * and the ```err``` field contains the error
+ */
+ParserResult fact(Parser* p);
+
+/**
+ * Consumes a numeric value:
+ * 
+ * ```nval ::= INT | FLT```
+ * 
+ * @param p The parser
+ * 
+ * @return The result of parsing the rule
+ * 
+ * @note In case of error, the ```root``` field is ```NULL```
+ * and the ```err``` field contains the error
+ */
+ParserResult nval(Parser* p);
+
+
 // Public functions
 
 Parser new_parser(const LexerResult res)
 {
-    Parser p = {res.tokens, res.size, -1, NULL};
+    Parser p = { 
+        .tok_list = res.tokens, 
+        .tok_count = res.size, 
+        .idx = -1, 
+        .current = NULL
+    };
     advance_parser(&p);
     return p;
 }
@@ -95,6 +173,9 @@ ParserResult parse(Parser* p)
 {
     return prog(p);
 }
+
+
+// Private function implementations
 
 ParserResult prog(Parser* p)
 {
@@ -133,11 +214,11 @@ ParserResult term(Parser* p)
 
 ParserResult fact(Parser* p)
 {
+    ParserResult res;
+
     // '(' expr ')'
     if (p->current->type == TT_LPA)
     {
-        ParserResult res;
-
         // Consume left parenthesis
         Position pos = get_next_position(p->current);
         if (advance_parser(p) == NULL)
@@ -175,35 +256,10 @@ ParserResult fact(Parser* p)
     }
 
     // Consume signed value
-    if (p->current->type == TT_ADD || p->current->type == TT_SUB)
-    {
-        // Consume sign
-        const Token* sign = NULL;
-        if (p->current->type == TT_ADD || p->current->type == TT_SUB)
-        {
-            sign = p->current;
-            if (advance_parser(p) == NULL)
-            {
-                res.root = NULL;
-                res.err = new_error(
-                    InvalidSyntaxError,
-                    get_next_position(sign),
-                    "Expected number"
-                );
-                return res;
-            }
-        }
-    }
-}
-
-ParserResult sval(Parser* p)
-{
-    ParserResult res;
-
-    // Consume sign
     const Token* sign = NULL;
     if (p->current->type == TT_ADD || p->current->type == TT_SUB)
     {
+        // Consume sign
         sign = p->current;
         if (advance_parser(p) == NULL)
         {
@@ -215,19 +271,19 @@ ParserResult sval(Parser* p)
             );
             return res;
         }
+
+        // Consume factor
+        res = fact(p);
+        if (res.root == NULL)
+            return res;
+
+        // Correct exit
+        res.root = new_un_op_node(sign, res.root);
+        return res;
     }
 
     // Consume numeric value
-    res = nval(p);
-    if (res.root == NULL)
-        return res;
-
-    // Correct exit
-    if (sign) {
-        NumberNode* nn = (NumberNode*) res.root;
-        nn->sign = sign;
-    }
-    return res;
+    return nval(p);
 }
 
 ParserResult nval(Parser* p)
@@ -237,7 +293,7 @@ ParserResult nval(Parser* p)
     // Consume integer or float token
     if (p->current->type == TT_INT || p->current->type == TT_FLT)
     {
-        ASTNode* node = new_number_node(p->current, NULL);
+        ASTNode* node = new_number_node(p->current);
         advance_parser(p);
 
         res.root = node;

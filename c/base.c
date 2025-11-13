@@ -57,104 +57,174 @@ void free_token(Token* t)
 }
 
 
+// ----- TYPES -----
+
+DataType* new_int(int value)
+{
+    DataType* data = (DataType*) malloc(sizeof(DataType));
+    data->type = INT;
+    data->value.integer = value;
+    return data;
+}
+
+DataType* new_float(double value)
+{
+    DataType* data = (DataType*) malloc(sizeof(DataType));
+    data->type = FLOAT;
+    data->value.decimal = value;
+    return data;
+}
+
+DataType* promote(DataType* data, TypePriority type)
+{
+    switch (data->type)
+    {
+    case INT:
+        if (type == FLOAT)
+        {
+            DataType* promoted = new_float((float) data->value.integer);
+            free_value(data);
+            return promoted;
+        }
+        return NULL;
+
+    case FLOAT:
+        if (type == FLOAT)
+            return data;
+        return NULL;
+
+    default:
+        return NULL;
+    }
+}
+
+const char* get_type_representation(TypePriority type)
+{
+    switch (type)
+    {
+    case INT:
+        return "INT";
+
+    case FLOAT:
+        return "FLOAT";
+
+    default:
+        return "UNKNOWN";
+    }
+}
+
+int print_value(const DataType* data)
+{
+    switch (data->type)
+    {
+    case INT:
+        return printf("%d", data->value.integer);
+
+    case FLOAT:
+        return printf("%lf", data->value.decimal);
+
+    default:
+        return -1;
+    }
+}
+
+void free_value(DataType* data)
+{
+    free(data);
+}
+
+TypePriority max_priority(TypePriority type1, TypePriority type2)
+{
+    return (type1 >= type2) ? type1 : type2;
+}
+
+
 // ----- NODES -----
 
 ASTNode* new_number_node(const Token* number)
 {
-    NumberNode* node = (NumberNode*) malloc(sizeof(NumberNode));
-    node->base.type = Number;
-    node->number = number;
-    return (ASTNode*) node;
+    ASTNode* node = (ASTNode*) malloc(sizeof(ASTNode));
+    node->class = Number;
+    node->type = number->type;
+    node->pos = number->pos;
+    node->data.number.value = number;
+    return node;
 }
 
-ASTNode* new_un_op_node(ASTNode* value, const Token* sign)
+ASTNode* new_un_op_node(const Token* sign, ASTNode* value)
 {
-    UnOpNode* node = (UnOpNode*) malloc(sizeof(UnOpNode));
-    node->base.type = UnOp;
-    node->value = value;
-    node->sign = sign;
+    ASTNode* node = (ASTNode*) malloc(sizeof(ASTNode));
+    node->class = UnOp;
+    node->type = value->type;
+    node->pos = sign->pos;
+    node->data.unary.value = value;
+    node->data.unary.sign = sign;
     return (ASTNode*) node;
 }
 
 ASTNode* new_bin_op_node(const Token* op, ASTNode* left, ASTNode* right)
 {
-    BinOpNode* node = (BinOpNode*) malloc(sizeof(BinOpNode));
-    node->base.type = BinOp;
-    node->op = op;
-    node->left = left;
-    node->right = right;
-    return (ASTNode*) node;
+    ASTNode* node = (ASTNode*) malloc(sizeof(ASTNode));
+    node->class = BinOp;
+    node->type = max_priority(left->type, right->type);
+    node->pos = left->pos;
+    node->data.binary.op = op;
+    node->data.binary.left = left;
+    node->data.binary.right = right;
+    return node;
 }
 
 int print_node(const ASTNode* node)
 {
-    NumberNode* nn = NULL;
-    UnOpNode* nu = NULL;
-    BinOpNode* nb = NULL;
-
     int i = 0;
-    switch (node->type)
+    switch (node->class)
     {
-        case Number:
-            nn = (NumberNode*) node;
-            return print_token(nn->number);
-            break;
+    case Number:
+        return print_token(node->data.number.value);
 
-        case UnOp:
-            nu = (UnOpNode*) node;
-            i += printf("(SIGN:");
-            i += print_token(nu->sign);
-            i += printf(", ");
-            i += print_node(nu->value);
-            i += printf(")");
-            return i;
-            break;
+    case UnOp:
+        i += printf("(SIGN:");
+        i += print_token(node->data.unary.sign);
+        i += printf(", ");
+        i += print_node(node->data.unary.value);
+        i += printf(")");
+        return i;
 
-        case BinOp:
-            nb = (BinOpNode*) node;
-            i += print_token(nb->op);
-            i += printf("(");
-            i += print_node(nb->left);
-            i += printf(", ");
-            i += print_node(nb->right);
-            i += printf(")");
-            return i;
-            break;
-        
-        default:
-            return -1;
-            break;
+    case BinOp:
+        i += print_token(node->data.binary.op);
+        i += printf("(");
+        i += print_node(node->data.binary.left);
+        i += printf(", ");
+        i += print_node(node->data.binary.right);
+        i += printf(")");
+        return i;
+    
+    default:
+        return -1;
     }
 }
 
 void free_node(ASTNode* node)
 {
-    NumberNode* nn = NULL;
-    UnOpNode* nu = NULL;
-    BinOpNode* nb = NULL;
-
-    switch (node->type)
+    switch (node->class)
     {
-        case Number:
-            nn = (NumberNode*) node;
-            free(nn);
-            break;
+    case Number:
+        free(node);
+        break;
 
-        case UnOp:
-            nu = (UnOpNode*) node;
-            free_node(nu->value);
-            free(nu);
-            break;
+    case UnOp:
+        free_node(node->data.unary.value);
+        free(node);
+        break;
 
-        case BinOp:
-            nb = (BinOpNode*) node;
-            free_node(nb->left);
-            free_node(nb->right);
-            free(nb);
-            break;
+    case BinOp:
+        free_node(node->data.binary.left);
+        free_node(node->data.binary.right);
+        free(node);
+        break;
 
-        default:
-            break;
+    default:
+        break;
     }
 }
 
@@ -172,14 +242,13 @@ const char* ErrorRepr[] = {
 
 const Error new_error(ErrorType type, Position pos, const char* details)
 {
-    Error e;
-    e.type = type;
-    e.pos = pos;
+    Error e = { .type = type, .pos = pos, };
     strncpy(e.details, details, MAX_ERR_DET_LEN);
     return e;
 }
 
 int print_error(const Error e)
 {
-    return printf("%s at line %d, column %d: %s\n", ErrorRepr[e.type], e.pos.row, e.pos.col, e.details);
+    return printf("%s at line %d, column %d: %s\n", ErrorRepr[e.type],
+                  e.pos.row, e.pos.col, e.details);
 }

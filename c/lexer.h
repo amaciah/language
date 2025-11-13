@@ -38,15 +38,15 @@ typedef struct lexer_result
 Lexer new_lexer(const char* text);
 
 /**
- * Reserves memory for a lexer result of a given size
+ * Reserves memory for a lexer result for a given lexer
  * 
- * @param size The maximum number of tokens of the result
+ * @param l The lexer 
  * 
  * @return The new lexer result
  * 
  * @note Remember to call ```free_lexer_result()``` afterwards
  */
-LexerResult new_lexer_result(int size);
+LexerResult new_lexer_result(Lexer l);
 
 /**
  * Returns an "error result" containing no tokens

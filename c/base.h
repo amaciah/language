@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 /**
  * Represents a position (row, column) on a file
@@ -94,32 +95,126 @@ Position get_next_position(const Token* t);
 void free_token(Token* t);
 
 
+// ----- TYPES -----
+
+/**
+ * Data type and priority for promotion
+ */
+typedef enum type_priority
+{
+    INT   = 0,          // Integer value
+    FLOAT = 1,          // Decimal value
+} TypePriority;
+
+/**
+ * Possible values for data
+ */
+typedef union data_value
+{
+    int integer;
+    double decimal;
+} DataValue;
+
+/**
+ * Contains information about a type from the language
+ */
+typedef struct data_type
+{
+    TypePriority type;  // Type of data
+    DataValue value;
+} DataType;
+
+/**
+ * Creates a new integer value
+ * 
+ * @param value Data value
+ * 
+ * @return The new value
+ * 
+ * @note Remember to call ```free_data``` afterwards
+ */
+DataType* new_int(int value);
+
+/**
+ * Creates a new decimal value
+ * 
+ * @param value Data value
+ * 
+ * @return The new value
+ * 
+ * @note Remember to call ```free_data``` afterwards
+ */
+DataType* new_float(double value);
+
+/**
+ * Promotes a data value to another type
+ * 
+ * @param data The data value
+ * @param type The type to promote to
+ * 
+ * @return The promoted data value
+ * 
+ * @note Remember to call ```free_data``` afterwards
+ * @note The resulting data value will be of type ```type```
+ */
+DataType* promote(DataType* data, TypePriority type);
+
+/**
+ * Obtains a string representation of a data type
+ * 
+ * @param type The data type
+ * 
+ * @return A string representing the type of data
+ */
+const char* get_type_representation(TypePriority type);
+
+/**
+ * Prints the value of a data type to ```stdout```
+ * 
+ * @param data The data value
+ * 
+ * @return The number of characters printed
+ */
+int print_value(const DataType* data);
+
+/**
+ * Frees the memory used by a data value
+ * 
+ * @param data The data value
+ */
+void free_value(DataType* data);
+
+/**
+ * Obtains the data type with higher priority
+ * 
+ * @param type1 The type of the first value
+ * @param type2 The type of the second value
+ * 
+ * @return The type with higher priority
+*/
+TypePriority max_priority(TypePriority type1, TypePriority type2);
+
+
 // ----- NODES -----
 
 /**
  * Types of AST nodes
  */
-typedef enum node_type {
+typedef enum node_class
+{
     Number,     // Numeric value
     UnOp,       // Unary operation
     BinOp,      // Binary operation
-} NodeType;
+} NodeClass;
 
-/**
- * Base type for an AST node
- */
-typedef struct ast_node
-{
-    NodeType type;
-} ASTNode;
+typedef struct ast_node ASTNode;
 
 /**
  * Contains information about a numeric node
  */
 typedef struct number_node
 {
-    ASTNode base;
-    const Token* number;
+    const Token* value;
 } NumberNode;
 
 /**
@@ -127,7 +222,6 @@ typedef struct number_node
  */
 typedef struct un_op_node
 {
-    ASTNode base;
     const Token* sign;
     ASTNode* value;
 } UnOpNode;
@@ -137,11 +231,32 @@ typedef struct un_op_node
  */
 typedef struct bin_op_node
 {
-    ASTNode base;
     const Token* op;
     ASTNode* left;
     ASTNode* right;
 } BinOpNode;
+
+
+/**
+ * Possible values for data
+ */
+typedef union node_data
+{
+    NumberNode number;
+    UnOpNode unary;
+    BinOpNode binary;
+} NodeData;
+
+/**
+ * Base type for an AST node
+ */
+struct ast_node
+{
+    NodeClass class;
+    TypePriority type;
+    Position pos;
+    NodeData data;
+};
 
 /**
  * Creates a new numeric node
@@ -157,14 +272,14 @@ ASTNode* new_number_node(const Token* number);
 /**
  * Creates a new unary operation node
  * 
- * @param value Node containing the value
  * @param sign Token representing the sign
+ * @param value Node containing the value
  * 
  * @return The new node
  * 
  * @note Remember to call ```free_node``` afterwards
  */
-ASTNode* new_un_op_node(ASTNode* value, const Token* sign);
+ASTNode* new_un_op_node(const Token* sign, ASTNode* value);
 
 /**
  * Creates a new binary operation node
