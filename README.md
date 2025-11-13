@@ -12,13 +12,13 @@ The current syntax as a context-free grammar can be found in grammar.txt. At its
 ## Project structure
 Regardless of the implementation, the structure follows a similar pattern:
 
-- Base: Common data types and definitions required between modules.
-- Lexer: Receives the code in the implemented language and performs the lexical analysis, detecting each token supported by the language and returning a list of tokens as a result.
-- Parser: Receives the list of tokens from the previous step and performs the syntactical analysis, based on the syntax defined as a CFG. Returns an Abstract Syntax Tree (AST).
-- Interpreter: Receives the AST of a program and evaluates each node until a final expression is obtained. It is implemented directly in the target language (Python or C).
-- Terminal: Offers a console interface to be able to use the language from command line.
+- **Base:** Common data types and definitions required between modules.
+- **Lexer:** Receives the code in the implemented language and performs the lexical analysis, detecting each token supported by the language and returning a list of tokens as a result.
+- **Parser:** Receives the list of tokens from the previous step and performs the syntactical analysis, based on the syntax defined as a CFG. Returns an Abstract Syntax Tree (AST).
+- **Interpreter:** Receives the AST of a program and evaluates each node until a final expression is obtained. It is implemented directly in the target language (Python or C).
+- **Console:** Offers a console interface to be able to use the language from command line.
 
 ## Future work
-- Compiler: It is possible to generate Assembly code from the AST in a similar structure to the interpreter's. A compiled language usually offers a better performance.
-- Transpilers: Similarly, code in any other language can be generated from the AST to obtain a portable, cross-platform program.
-- Custom Assembly Language: I consider defining a custom machine code set, with a potential transpilation process to obtain platform-specific instructions.
+- **Compiler:** It is possible to generate Assembly code from the AST in a similar structure to the interpreter's. A compiled language usually offers a better performance.
+- **Transpilers:** Similarly, code in any other language can be generated from the AST to obtain a portable, cross-platform program.
+- **Custom Assembly Language:** I consider defining a custom machine code set, with a potential transpilation process to obtain platform-specific instructions.
