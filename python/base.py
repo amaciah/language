@@ -65,6 +65,9 @@ class Float(DataType):
         super().__init__(type=TT_FLT, value=value)
 
     def promote(self, type: str) -> DataType | None:
+        if type == TT_FLT:
+            return self
+        
         return None
 
 class TypePromotion:

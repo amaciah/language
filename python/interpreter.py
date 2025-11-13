@@ -22,7 +22,7 @@ class Interpreter:
         else:
             return None, RuntimeError(
                 node.pos,
-                f"No visit method defined for node of type {node.type}"
+                f"Unable to interpret node: Type {type(node)} unknown"
             )
         
     def visit_NumberNode(self, node: NumberNode) -> Tuple[DataType, Error]:
@@ -42,7 +42,7 @@ class Interpreter:
             return None, err
         
         if node.sign.type == TT_SUB:
-            value.value = -value.value
+            return self.neg(value, node)
 
         return value, None
     
@@ -86,6 +86,16 @@ class Interpreter:
         return None, RuntimeError(
             node.pos,
             f"Unknown operator: {node.op.type}"
+        )
+    
+    def neg(self, value: DataType, node: UnOpNode) -> Tuple[DataType, Error]:
+        if node.type in (TT_INT, TT_FLT):
+            value.value = -value.value
+            return value, None
+
+        return None, RuntimeError(
+            node.pos,
+            f"No negative method defined for type {node.type}"
         )
         
     def add(self, left: DataType, right: DataType, node: BinOpNode) -> Tuple[DataType, Error]:
