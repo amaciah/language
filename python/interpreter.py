@@ -50,29 +50,13 @@ class Interpreter:
     
     def visit_BinOpNode(self, node: BinOpNode) -> Tuple[DataType, Error]:
 
-        left, err = self.visit(node.left)
+        left, err = self.visit_node_with_promotion(node.left, node.type)
         if err:
             return None, err
-        
-        if node.left.type != node.type:
-            left = left.promote(node.type)
-            if left is None:
-                return None, RuntimeError(
-                    node.pos,
-                    f"Unable to convert from {node.left.type} to {node.type}"
-                )
 
-        right, err = self.visit(node.right)
+        right, err = self.visit_node_with_promotion(node.right, node.type)
         if err:
             return None, err
-        
-        if node.right.type != node.type:
-            right = right.promote(node.type)
-            if right is None:
-                return None, RuntimeError(
-                    node.pos,
-                    f"Unable to convert from {node.right.type} to {node.type}"
-                )
         
         if node.op.type == TT_ADD:
             return self.add(left, right, node)
@@ -178,9 +162,6 @@ class Interpreter:
             node.pos,
             f"No module method defined for type {node.type}"
         )
-
-    def isZero(self, value: DataType) -> bool:
-        return value.value == 0
     
     def pow(self, left: DataType, right: DataType, node: BinOpNode) -> Tuple[DataType, Error]:
         if node.type == TT_INT:
@@ -192,4 +173,22 @@ class Interpreter:
             node.pos,
             f"No power method defined for type {node.type}"
         )
+
+    def isZero(self, value: DataType) -> bool:
+        return value.value == 0
+    
+    def visit_node_with_promotion(self, node: ASTNode, type: str) -> Tuple[DataType, Error]:
+        value, err = self.visit(node)
+        if err:
+            return None, err
+        
+        if node.type != type:
+            value = value.promote(type)
+            if value is None:
+                return None, RuntimeError(
+                    node.pos,
+                    f"Unable to convert from {node.type} to {type}"
+                )
+        
+        return value, None
         
