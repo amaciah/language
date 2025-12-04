@@ -9,7 +9,7 @@ char* strip(char* str)
     while (str[i] == ' ' || str[i] == '\t')
         i++;
     
-    while (str[i] != ' ' || str[i] == '\t')
+    while (str[i] != ' ' && str[i] != '\t' && str[i] != '\0')
         str[j++] = str[i++];
 
     str[j] = '\0';

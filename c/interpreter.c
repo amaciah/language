@@ -61,6 +61,8 @@ Result visit_BinOpNode(const ASTNode* node);
 
 // Unary operators
 
+Result pos(const DataType* value, const ASTNode* node);
+
 Result neg(const DataType* value, const ASTNode* node);
 
 // Binary operators
@@ -74,6 +76,8 @@ Result mul(const DataType* left, const DataType* right, const ASTNode* node);
 Result div_(const DataType* left, const DataType* right, const ASTNode* node);
 
 Result mod(const DataType* left, const DataType* right, const ASTNode* node);
+
+Result pow_(const DataType* left, const DataType* right, const ASTNode* node);
 
 
 // Public functions
@@ -147,17 +151,24 @@ Result visit_NumberNode(const ASTNode* node)
 
 Result visit_UnOpNode(const ASTNode* node)
 {
-    Result res, resneg;
+    Result res, res_signed;
 
     res = visit(node->data.unary.value);
     if (res.result == NULL)
         return res;
 
+    if (node->data.unary.sign->type == TT_ADD)
+    {
+        res_signed = pos(res.result, node);
+        free_value(res.result);
+        return res_signed;
+    }
+
     if (node->data.unary.sign->type == TT_SUB)
     {
-        resneg = neg(res.result, node);
+        res_signed = neg(res.result, node);
         free_value(res.result);
-        return resneg;
+        return res_signed;
     }
 
     return res;
@@ -200,6 +211,10 @@ Result visit_BinOpNode(const ASTNode* node)
         res = mod(left.result, right.result, node);
         break;
 
+    case TT_POW:
+        res = pow_(left.result, right.result, node);
+        break;
+
     default:
         res.result = NULL;
         res.err = new_error(
@@ -212,6 +227,39 @@ Result visit_BinOpNode(const ASTNode* node)
     
     free_value(left.result);
     free_value(right.result);
+    return res;
+}
+
+Result pos(const DataType* value, const ASTNode* node)
+{
+    Result res;
+
+    switch (node->type)
+    {
+    case INT:
+        res.result = new_int(+value->value.integer);
+        break;
+
+    case FLOAT:
+        res.result = new_float(+value->value.decimal);
+        break;
+
+    default:
+        char details[MAX_ERR_DET_LEN];
+        sprintf(
+            details, 
+            "No positive method defined for type %s", 
+            get_type_representation(node->type)
+        );
+        res.result = NULL;
+        res.err = new_error(
+            RuntimeError,
+            node->pos,
+            details
+        );
+        break;
+    }
+
     return res;
 }
 
@@ -421,6 +469,39 @@ Result mod(const DataType* left, const DataType* right, const ASTNode* node)
         sprintf(
             details, 
             "No module method defined for type %s", 
+            get_type_representation(node->type)
+        );
+        res.result = NULL;
+        res.err = new_error(
+            RuntimeError,
+            node->pos,
+            details
+        );
+        break;
+    }
+
+    return res;
+}
+
+Result pow_(const DataType* left, const DataType* right, const ASTNode* node)
+{
+    Result res;
+
+    switch (node->type)
+    {
+    case INT:
+        res.result = new_int(pow(left->value.integer, right->value.integer));
+        break;
+
+    case FLOAT:
+        res.result = new_float(pow(left->value.decimal, right->value.decimal));
+        break;
+
+    default:
+        char details[MAX_ERR_DET_LEN];
+        sprintf(
+            details, 
+            "No power method defined for type %s", 
             get_type_representation(node->type)
         );
         res.result = NULL;

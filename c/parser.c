@@ -7,10 +7,11 @@
 /**
  * Consumes a binary operation:
  * 
- * ```bino ::= func { ( op1 | op2 | ... ) func }```
+ * ```bino ::= left { ( op1 | op2 | ... ) right }```
  * 
  * @param p The parser
- * @param func The rule function of the operands
+ * @param left The rule function of the left operand
+ * @param right The rule function of the right operand
  * @param ops The valid operators for the rule
  * @param n_ops The number of valid operators
  * 
@@ -19,13 +20,19 @@
  * @note In case of error, the ```root``` field is ```NULL```
  * and the ```err``` field contains the error
 */
-ParserResult bin_op(Parser* p, ParserResult (*func)(Parser*), TokenType ops[], int n_ops)
+ParserResult bin_op(
+    Parser* p, 
+    ParserResult (*left)(Parser*), 
+    ParserResult (*right)(Parser*), 
+    TokenType ops[], 
+    int n_ops
+)
 {
     ParserResult res;
     int f_current_tok_in_ops = 1;   // The current token is a valid operator
 
     // Consume left node
-    res = func(p);
+    res = left(p);
     if (res.root == NULL)
         return res;
 
@@ -56,15 +63,15 @@ ParserResult bin_op(Parser* p, ParserResult (*func)(Parser*), TokenType ops[], i
                 }
 
                 // Consume right node
-                ParserResult right = func(p);
-                if (right.root == NULL)
+                ParserResult right_n = right(p);
+                if (right_n.root == NULL)
                 {
                     free_node(res.root);
-                    return right;
+                    return right_n;
                 }
 
                 // Build binary node
-                res.root = new_bin_op_node(op, res.root, right.root);
+                res.root = new_bin_op_node(op, res.root, right_n.root);
                 break;
             }
         }
@@ -94,7 +101,7 @@ ParserResult prog(Parser* p);
 /**
  * Consumes a math expression:
  * 
- * ```expr ::= term { ('+' | '-') term }```
+ * ```expr ::= term { ('+' | '-') expr }```
  * 
  * @param p The parser
  * 
@@ -108,7 +115,7 @@ ParserResult expr(Parser* p);
 /**
  * Consumes a math term:
  * 
- * ```term ::= fact { ('*' | '/' | '%') fact }```
+ * ```term ::= powr { ('*' | '/' | '%') term }```
  * 
  * @param p The parser
  * 
@@ -118,6 +125,20 @@ ParserResult expr(Parser* p);
  * and the ```err``` field contains the error
  */
 ParserResult term(Parser* p);
+
+/**
+ * Consumes a math power:
+ * 
+ * ```powr ::= fact [ '^' powr ]```
+ * 
+ * @param p The parser
+ * 
+ * @return The result of parsing the rule
+ * 
+ * @note In case of error, the ```root``` field is ```NULL```
+ * and the ```err``` field contains the error
+ */
+ParserResult powr(Parser* p);
 
 /**
  * Consumes a math factor:
@@ -202,14 +223,54 @@ ParserResult expr(Parser* p)
 {
     // Consume binary operation
     TokenType ops[] = {TT_ADD, TT_SUB};
-    return bin_op(p, term, ops, 2);
+    return bin_op(p, term, expr, ops, 2);
 }
 
 ParserResult term(Parser* p)
 {
     // Consume binary operation
     TokenType ops[] = {TT_MUL, TT_DIV, TT_MOD};
-    return bin_op(p, fact, ops, 3);
+    return bin_op(p, powr, term, ops, 3);
+}
+
+ParserResult powr(Parser* p)
+{
+    // Consume left node
+    ParserResult res = fact(p);
+    if (res.root == NULL)
+        return res;
+
+    // '^' powr
+    if (p->current && p->current->type == TT_POW)
+    {
+        // Consume operator
+        const Token* op = p->current;
+        if (advance_parser(p) == NULL)
+        {
+            free_node(res.root);
+            res.root = NULL;
+            res.err = new_error(
+                InvalidSyntaxError,
+                get_next_position(op),
+                "Expected another number"
+            );
+            return res;
+        }
+
+        // Consume right node
+        ParserResult right_n = powr(p);
+        if (right_n.root == NULL)
+        {
+            free_node(res.root);
+            return right_n;
+        }
+
+        // Build binary node
+        res.root = new_bin_op_node(op, res.root, right_n.root);
+    }
+
+    // Correct exit
+    return res;
 }
 
 ParserResult fact(Parser* p)
@@ -267,7 +328,7 @@ ParserResult fact(Parser* p)
             res.err = new_error(
                 InvalidSyntaxError,
                 get_next_position(sign),
-                "Expected number"
+                "Expected expression"
             );
             return res;
         }
