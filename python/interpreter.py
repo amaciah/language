@@ -41,6 +41,8 @@ class Interpreter:
         if err:
             return None, err
         
+        if node.sign.type == TT_ADD:
+            return self.pos(value, node)
         if node.sign.type == TT_SUB:
             return self.neg(value, node)
 
@@ -82,10 +84,22 @@ class Interpreter:
             return self.div(left, right, node)
         if node.op.type == TT_MOD:
             return self.mod(left, right, node)
+        if node.op.type == TT_POW:
+            return self.pow(left, right, node)
         
         return None, RuntimeError(
             node.pos,
             f"Unknown operator: {node.op.type}"
+        )
+        
+    def pos(self, value: DataType, node: UnOpNode) -> Tuple[DataType, Error]:
+        if node.type in (TT_INT, TT_FLT):
+            value.value = +value.value
+            return value, None
+        
+        return None, RuntimeError(
+            node.pos,
+            f"No positive method defined for type {node.type}"
         )
     
     def neg(self, value: DataType, node: UnOpNode) -> Tuple[DataType, Error]:
@@ -167,3 +181,15 @@ class Interpreter:
 
     def isZero(self, value: DataType) -> bool:
         return value.value == 0
+    
+    def pow(self, left: DataType, right: DataType, node: BinOpNode) -> Tuple[DataType, Error]:
+        if node.type == TT_INT:
+            return Int(left.value ** right.value), None
+        if node.type == TT_FLT:
+            return Float(left.value ** right.value), None
+        
+        return None, RuntimeError(
+            node.pos,
+            f"No power method defined for type {node.type}"
+        )
+        

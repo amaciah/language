@@ -6,16 +6,24 @@
 
 // Grammar (v2)
 
+// Program
 prog ::= expr
 
+// Expression
 expr ::= term { ( ADD | SUB ) expr }
 
-term ::= fact { ( MUL | DIV | MOD ) term }
+// Term
+term ::= powr { ( MUL | DIV | MOD ) term }
 
+// Power
+powr ::= fact [ POW powr ]
+
+// Factor
 fact ::= nval
        | LPA expr RPA
        | ( ADD | SUB ) fact
 
+// Numeric value
 nval ::= INT | FLT
 
 

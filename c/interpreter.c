@@ -71,7 +71,7 @@ Result sub(const DataType* left, const DataType* right, const ASTNode* node);
 
 Result mul(const DataType* left, const DataType* right, const ASTNode* node);
 
-Result divf(const DataType* left, const DataType* right, const ASTNode* node);
+Result div_(const DataType* left, const DataType* right, const ASTNode* node);
 
 Result mod(const DataType* left, const DataType* right, const ASTNode* node);
 
@@ -193,7 +193,7 @@ Result visit_BinOpNode(const ASTNode* node)
         break;
 
     case TT_DIV:
-        res = divf(left.result, right.result, node);
+        res = div_(left.result, right.result, node);
         break;
 
     case TT_MOD:
@@ -347,7 +347,7 @@ Result mul(const DataType* left, const DataType* right, const ASTNode* node)
     return res;
 }
 
-Result divf(const DataType* left, const DataType* right, const ASTNode* node)
+Result div_(const DataType* left, const DataType* right, const ASTNode* node)
 {
     Result res;
 

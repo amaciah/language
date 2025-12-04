@@ -49,19 +49,52 @@ class Parser:
         """
         Consume a math expression
 
-        `expr ::= term { ('+' | '-') term }`
+        `expr ::= term { ('+' | '-') expr }`
         """
         # Consume binary operation
-        return self._bin_op(self.term, (TT_ADD, TT_SUB))
+        return self._bin_op(self.term, self.expr, (TT_ADD, TT_SUB))
     
     def term(self) -> Tuple[ASTNode, Error]:
         """
         Consume a math term
 
-        `term ::= fact { ('*' | '/' | '%') fact }`
+        `term ::= powr { ('*' | '/' | '%') term }`
         """
         # Consume binary operation
-        return self._bin_op(self.fact, (TT_MUL, TT_DIV, TT_MOD))
+        return self._bin_op(self.powr, self.term, (TT_MUL, TT_DIV, TT_MOD))
+    
+    def powr(self) -> Tuple[ASTNode, Error]:
+        """
+        Consume a math power
+        
+        `powr ::= fact [ '^' powr ]`
+        """
+        # Consume left node
+        left, err = self.fact()
+        if err:
+            return None, err
+        
+        # '^' powr
+        if self.current_tok and self.current_tok.type == TT_POW:
+            
+            # Consume operator
+            op = self.current_tok
+            if self.advance() == None:
+                return None, InvalidSyntaxError(
+                    op.get_next_position(),
+                    f"Expected another number"
+                )
+                
+            # Consume right node
+            right, err = self.powr()
+            if err:
+                return None, err
+            
+            # Build binary node
+            left = BinOpNode(op, left, right)
+        
+        # Correct exit
+        return left, None
 
     def fact(self) -> Tuple[ASTNode, Error]:
         """
@@ -142,15 +175,15 @@ class Parser:
 
     # Auxiliary methods
 
-    def _bin_op(self, func: Callable, ops: List) -> Tuple[ASTNode, Error]:
+    def _bin_op(self, left: Callable, right: Callable, ops: List) -> Tuple[ASTNode, Error]:
         """
         Consume a binary operation
 
-        `bino ::= func { ( op1 | op2 | ... ) func }`
+        `bino ::= left { ( op1 | op2 | ... ) right }`
         """
         
         # Consume left node
-        left, err = func()
+        left_n, err = left()
         if err:
             return None, err       
 
@@ -165,12 +198,12 @@ class Parser:
                 )
 
             # Consume right node
-            right, err = func()
+            right_n, err = right()
             if err:
                 return None, err
             
             # Build binary node
-            left = BinOpNode(op, left, right)
+            left_n = BinOpNode(op, left_n, right_n)
 
         # Correct exit
-        return left, None
+        return left_n, None
