@@ -1,6 +1,6 @@
 
 from typing import List, Callable
-from base import *
+from .base import *
 
 
 # ----- PARSER -----

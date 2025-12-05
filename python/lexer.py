@@ -1,6 +1,6 @@
 
 from typing import List, Tuple
-from base import *
+from .base import *
     
 
 # ----- LEXER -----
