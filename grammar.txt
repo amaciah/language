@@ -4,6 +4,29 @@
 |  -> or
 
 
+// Grammar (v3)
+
+// Program
+prog ::= expr
+
+// Expression
+expr ::= term { ( ADD | SUB ) term }
+
+// Term
+term ::= fact { ( MUL | DIV | MOD ) fact }
+
+// Factor (unary or power)
+fact ::= ( ADD | SUB ) fact
+       | nval [ POW fact ]
+
+// Numeric value
+nval ::= LPA expr RPA
+       | nlit
+
+// Numeric literal
+nlit ::= INT | FLT
+
+
 // Grammar (v2)
 
 // Program
