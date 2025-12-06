@@ -29,7 +29,7 @@ class Parser:
 
         `prog ::= expr`
         """
-
+        
         # Consume an expression
         expr, err = self.expr()
         if err:
@@ -49,88 +49,28 @@ class Parser:
         """
         Consume a math expression
 
-        `expr ::= term { ('+' | '-') expr }`
+        `expr ::= term { ('+' | '-') term }`
         """
         # Consume binary operation
-        return self._bin_op(self.term, self.expr, (TT_ADD, TT_SUB))
+        return self._bin_op(self.term, (TT_ADD, TT_SUB))
     
     def term(self) -> Tuple[ASTNode, Error]:
         """
         Consume a math term
 
-        `term ::= powr { ('*' | '/' | '%') term }`
+        `term ::= fact { ('*' | '/' | '%') fact }`
         """
         # Consume binary operation
-        return self._bin_op(self.powr, self.term, (TT_MUL, TT_DIV, TT_MOD))
+        return self._bin_op(self.fact, (TT_MUL, TT_DIV, TT_MOD))
     
-    def powr(self) -> Tuple[ASTNode, Error]:
-        """
-        Consume a math power
-        
-        `powr ::= fact [ '^' powr ]`
-        """
-        # Consume left node
-        left, err = self.fact()
-        if err:
-            return None, err
-        
-        # '^' powr
-        if self.current_tok and self.current_tok.type == TT_POW:
-            
-            # Consume operator
-            op = self.current_tok
-            if self.advance() == None:
-                return None, InvalidSyntaxError(
-                    op.get_next_position(),
-                    f"Expected another number"
-                )
-                
-            # Consume right node
-            right, err = self.powr()
-            if err:
-                return None, err
-            
-            # Build binary node
-            left = BinOpNode(op, left, right)
-        
-        # Correct exit
-        return left, None
-
     def fact(self) -> Tuple[ASTNode, Error]:
         """
         Consume a math factor
 
-        `fact ::= '(' expr ')' | ( '+' | '-' ) fact | nval`
+        `fact ::= ( '+' | '-' ) fact | nval [ '^' fact ]`
         """
-
-        # '(' expr ')'
-        if self.current_tok.type == TT_LPA:
-
-            # Consume left parenthesis
-            pos = self.current_tok.get_next_position()
-            if self.advance() == None:
-                return None, InvalidSyntaxError(
-                    pos,
-                    "Expected expression"
-                )
-
-            # Consume expression
-            expr, err = self.expr()
-            if err:
-                return None, err
-            
-            # Consume right parenthesis
-            if self.current_tok.type != TT_RPA:
-                return None, InvalidSyntaxError(
-                    self.current_tok.pos,
-                    "Expected ')'"
-                )
-            self.advance()
-
-            # Correct exit
-            return expr, None
         
-        # Consume signed value
+        # ( '+' | '-' ) fact
         if self.current_tok.type in (TT_ADD, TT_SUB):
 
             # Consume sign
@@ -148,15 +88,77 @@ class Parser:
             
             # Correct exit
             return UnOpNode(sign, node), None
+
+        # Consume power
+        left, err = self.nval()
+        if err:
+            return None, err
         
-        # Consume numeric value
-        return self.nval()
+        # '^' fact
+        if self.current_tok and self.current_tok.type == TT_POW:
+            
+            # Consume operator
+            op = self.current_tok
+            if self.advance() == None:
+                return None, InvalidSyntaxError(
+                    op.get_next_position(),
+                    f"Expected another number"
+                )
+                
+            # Consume right node
+            right, err = self.fact()
+            if err:
+                return None, err
+            
+            # Build binary node
+            left = BinOpNode(op, left, right)
+            
+        # Correct exit
+        return left, None
     
-    def nval(self) -> Tuple[NumberNode, Error]:
+    def nval(self) -> Tuple[ASTNode, Error]:
         """
         Consume a numeric value
+        
+        `nval ::= '(' expr ')' | nlit`
+        """
+        
+        # '(' expr ')'
+        if self.current_tok.type == TT_LPA:
 
-        `nval ::= INT | FLT`
+            # Consume left parenthesis
+            pos = self.current_tok.get_next_position()
+            if self.advance() == None:
+                return None, InvalidSyntaxError(
+                    pos,
+                    "Expected expression"
+                )
+
+            # Consume expression
+            expr, err = self.expr()
+            if err:
+                return None, err
+            
+            # Consume right parenthesis
+            pos = self.current_tok.pos if self.current_tok else expr.pos 
+            if self.current_tok is None or self.current_tok.type != TT_RPA:
+                return None, InvalidSyntaxError(
+                    pos,
+                    "Expected ')'"
+                )
+            self.advance()
+
+            # Correct exit
+            return expr, None
+        
+        # Consume numeric literal
+        return self.nlit()
+
+    def nlit(self) -> Tuple[NumberNode, Error]:
+        """
+        Consume a numeric literal
+
+        `nlit ::= INT | FLT`
         """
         # Consume integer or float token
         if self.current_tok.type in (TT_INT, TT_FLT):
@@ -175,15 +177,15 @@ class Parser:
 
     # Auxiliary methods
 
-    def _bin_op(self, left: Callable, right: Callable, ops: List) -> Tuple[ASTNode, Error]:
+    def _bin_op(self, func: Callable, ops: List) -> Tuple[ASTNode, Error]:
         """
-        Consume a binary operation
+        Consume a binary operation (left associative)
 
-        `bino ::= left { ( op1 | op2 | ... ) right }`
+        `bino ::= func { ( op1 | op2 | ... ) func }`
         """
         
         # Consume left node
-        left_n, err = left()
+        left, err = func()
         if err:
             return None, err       
 
@@ -198,12 +200,12 @@ class Parser:
                 )
 
             # Consume right node
-            right_n, err = right()
+            right, err = func()
             if err:
                 return None, err
             
             # Build binary node
-            left_n = BinOpNode(op, left_n, right_n)
+            left = BinOpNode(op, left, right)
 
         # Correct exit
-        return left_n, None
+        return left, None

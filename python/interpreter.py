@@ -49,7 +49,6 @@ class Interpreter:
         return value, None
     
     def visit_BinOpNode(self, node: BinOpNode) -> Tuple[DataType, Error]:
-
         left, err = self.visit_node_with_promotion(node.left, node.type)
         if err:
             return None, err

@@ -121,6 +121,8 @@ class BinOpNode(ASTNode):
     def infer_type(self) -> None:
         if self.left.type != self.right.type:
             self.type = TypePromotion.max(self.left.type, self.right.type)
+        if self.op.type == TT_DIV:
+            self.type = TT_FLT
 
 
 # ----- ERRORS -----
