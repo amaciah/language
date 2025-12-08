@@ -141,6 +141,22 @@ TypePriority max_priority(TypePriority type1, TypePriority type2)
 
 // ----- NODES -----
 
+// Auxiliary functions
+
+/**
+ * Infers the data type of a binary operation node
+ * 
+ * @param binary The binary operation node
+ */
+void infer_type(ASTNode* binary)
+{
+    if (binary->data.binary.left->type != binary->data.binary.right->type)
+        binary->type = max_priority(binary->data.binary.left->type, 
+                                    binary->data.binary.right->type);
+    if (binary->data.binary.op->type == TT_DIV)
+        binary->type = FLOAT;
+}
+
 ASTNode* new_number_node(const Token* number)
 {
     ASTNode* node = (ASTNode*) malloc(sizeof(ASTNode));
@@ -159,18 +175,18 @@ ASTNode* new_un_op_node(const Token* sign, ASTNode* value)
     node->pos = sign->pos;
     node->data.unary.value = value;
     node->data.unary.sign = sign;
-    return (ASTNode*) node;
+    return node;
 }
 
 ASTNode* new_bin_op_node(const Token* op, ASTNode* left, ASTNode* right)
 {
     ASTNode* node = (ASTNode*) malloc(sizeof(ASTNode));
     node->class = BinOp;
-    node->type = max_priority(left->type, right->type);
     node->pos = left->pos;
     node->data.binary.op = op;
     node->data.binary.left = left;
     node->data.binary.right = right;
+    infer_type(node);
     return node;
 }
 

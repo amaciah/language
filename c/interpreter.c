@@ -12,7 +12,7 @@ int isZero(const DataType* value)
         return value->value.integer == 0;
 
     case FLOAT:
-        return value->value.decimal == 0;
+        return fabs(value->value.decimal) < 1e-9;
 
     default:
         return 1;
@@ -157,21 +157,22 @@ Result visit_UnOpNode(const ASTNode* node)
     if (res.result == NULL)
         return res;
 
-    if (node->data.unary.sign->type == TT_ADD)
+    switch (node->data.unary.sign->type)
     {
+    case TT_ADD:
         res_signed = pos(res.result, node);
-        free_value(res.result);
-        return res_signed;
-    }
+        break;
 
-    if (node->data.unary.sign->type == TT_SUB)
-    {
+    case TT_SUB:
         res_signed = neg(res.result, node);
-        free_value(res.result);
-        return res_signed;
+        break;
+    
+    default:
+        return res;  // Should not happen
     }
 
-    return res;
+    free_value(res.result);
+    return res_signed;
 }
 
 Result visit_BinOpNode(const ASTNode* node)

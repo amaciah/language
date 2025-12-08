@@ -1,3 +1,4 @@
+import math
 from base import *
 
 # ----- INTERPRETER -----
@@ -174,7 +175,7 @@ class Interpreter:
         )
 
     def isZero(self, value: DataType) -> bool:
-        return value.value == 0
+        return math.isclose(float(value.value), 0.0, rel_tol=1e-9)
     
     def visit_node_with_promotion(self, node: ASTNode, type: str) -> Tuple[DataType, Error]:
         value, err = self.visit(node)

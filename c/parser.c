@@ -5,13 +5,12 @@
 // Auxiliary functions
 
 /**
- * Consumes a binary operation:
+ * Consumes a binary operation (left associative):
  * 
- * ```bino ::= left { ( op1 | op2 | ... ) right }```
+ * ```bino ::= func { ( op1 | op2 | ... ) func }```
  * 
  * @param p The parser
- * @param left The rule function of the left operand
- * @param right The rule function of the right operand
+ * @param func The rule function of the operands
  * @param ops The valid operators for the rule
  * @param n_ops The number of valid operators
  * 
@@ -22,20 +21,19 @@
 */
 ParserResult bin_op(
     Parser* p, 
-    ParserResult (*left)(Parser*), 
-    ParserResult (*right)(Parser*), 
+    ParserResult (*func)(Parser*), 
     TokenType ops[], 
     int n_ops
 )
 {
-    ParserResult res;
-    int f_current_tok_in_ops = 1;   // The current token is a valid operator
-
+    ParserResult left;
+    
     // Consume left node
-    res = left(p);
-    if (res.root == NULL)
-        return res;
-
+    left = func(p);
+    if (left.root == NULL)
+    return left;
+    
+    int f_current_tok_in_ops = 1;   // The current token is a valid operator
     while (p->current && f_current_tok_in_ops)
     {
         // Reset flag
@@ -52,33 +50,33 @@ ParserResult bin_op(
                 const Token* op = p->current;
                 if (advance_parser(p) == NULL)
                 {
-                    free_node(res.root);
-                    res.root = NULL;
-                    res.err = new_error(
+                    free_node(left.root);
+                    left.root = NULL;
+                    left.err = new_error(
                         InvalidSyntaxError,
                         get_next_position(op),
                         "Expected another number"
                     );
-                    return res;
+                    return left;
                 }
 
                 // Consume right node
-                ParserResult right_n = right(p);
-                if (right_n.root == NULL)
+                ParserResult right = func(p);
+                if (right.root == NULL)
                 {
-                    free_node(res.root);
-                    return right_n;
+                    free_node(left.root);
+                    return right;
                 }
 
                 // Build binary node
-                res.root = new_bin_op_node(op, res.root, right_n.root);
+                left.root = new_bin_op_node(op, left.root, right.root);
                 break;
             }
         }
     }
     
     // Correct exit
-    return res;
+    return left;
 }
 
 
@@ -101,7 +99,7 @@ ParserResult prog(Parser* p);
 /**
  * Consumes a math expression:
  * 
- * ```expr ::= term { ('+' | '-') expr }```
+ * ```expr ::= term { ('+' | '-') term }```
  * 
  * @param p The parser
  * 
@@ -115,7 +113,7 @@ ParserResult expr(Parser* p);
 /**
  * Consumes a math term:
  * 
- * ```term ::= powr { ('*' | '/' | '%') term }```
+ * ```term ::= fact { ('*' | '/' | '%') fact }```
  * 
  * @param p The parser
  * 
@@ -127,23 +125,9 @@ ParserResult expr(Parser* p);
 ParserResult term(Parser* p);
 
 /**
- * Consumes a math power:
- * 
- * ```powr ::= fact [ '^' powr ]```
- * 
- * @param p The parser
- * 
- * @return The result of parsing the rule
- * 
- * @note In case of error, the ```root``` field is ```NULL```
- * and the ```err``` field contains the error
- */
-ParserResult powr(Parser* p);
-
-/**
  * Consumes a math factor:
  * 
- * ```fact ::= '(' expr ')' | ( '+' | '-' ) fact | nval```
+ * ```fact ::= ( '+' | '-' ) fact | nval [ '^' fact ]```
  * 
  * @param p The parser
  * 
@@ -157,7 +141,7 @@ ParserResult fact(Parser* p);
 /**
  * Consumes a numeric value:
  * 
- * ```nval ::= INT | FLT```
+ * ```nval ::= '(' expr ')' | nlit```
  * 
  * @param p The parser
  * 
@@ -167,6 +151,20 @@ ParserResult fact(Parser* p);
  * and the ```err``` field contains the error
  */
 ParserResult nval(Parser* p);
+
+/**
+ * Consumes a numeric literal:
+ * 
+ * ```nlit ::= INT | FLT```
+ * 
+ * @param p The parser
+ * 
+ * @return The result of parsing the rule
+ * 
+ * @note In case of error, the ```root``` field is ```NULL```
+ * and the ```err``` field contains the error
+ */
+ParserResult nlit(Parser* p);
 
 
 // Public functions
@@ -179,7 +177,6 @@ Parser new_parser(const LexerResult res)
         .idx = -1, 
         .current = NULL
     };
-    advance_parser(&p);
     return p;
 }
 
@@ -200,8 +197,22 @@ ParserResult parse(Parser* p)
 
 ParserResult prog(Parser* p)
 {
+    ParserResult res;
+
+    // Advance to first token
+    if (advance_parser(p) == NULL)
+    {
+        res.root = NULL;
+        res.err = new_error(
+            InvalidSyntaxError,
+            (Position) {1, 1},
+            "Unexpected end of input"
+        );
+        return res;
+    }
+
     // Consume an expression
-    ParserResult res = expr(p);
+    res = expr(p);
     if (res.root == NULL)
         return res;
 
@@ -223,24 +234,52 @@ ParserResult expr(Parser* p)
 {
     // Consume binary operation
     TokenType ops[] = {TT_ADD, TT_SUB};
-    return bin_op(p, term, expr, ops, 2);
+    return bin_op(p, term, ops, 2);
 }
 
 ParserResult term(Parser* p)
 {
     // Consume binary operation
     TokenType ops[] = {TT_MUL, TT_DIV, TT_MOD};
-    return bin_op(p, powr, term, ops, 3);
+    return bin_op(p, fact, ops, 3);
 }
 
-ParserResult powr(Parser* p)
+ParserResult fact(Parser* p)
 {
-    // Consume left node
-    ParserResult res = fact(p);
+    ParserResult res;
+
+    // ( '+' | '-' ) fact
+    if (p->current->type == TT_ADD || p->current->type == TT_SUB)
+    {
+        // Consume sign
+        const Token* sign = p->current;
+        if (advance_parser(p) == NULL)
+        {
+            res.root = NULL;
+            res.err = new_error(
+                InvalidSyntaxError,
+                get_next_position(sign),
+                "Expected expression"
+            );
+            return res;
+        }
+
+        // Consume factor
+        res = fact(p);
+        if (res.root == NULL)
+            return res;
+
+        // Build unary node
+        res.root = new_un_op_node(sign, res.root);
+        return res;
+    }
+
+    // Consume power
+    res = nval(p);
     if (res.root == NULL)
         return res;
 
-    // '^' powr
+    // '^' fact
     if (p->current && p->current->type == TT_POW)
     {
         // Consume operator
@@ -258,22 +297,22 @@ ParserResult powr(Parser* p)
         }
 
         // Consume right node
-        ParserResult right_n = powr(p);
-        if (right_n.root == NULL)
+        ParserResult right = fact(p);
+        if (right.root == NULL)
         {
             free_node(res.root);
-            return right_n;
+            return right;
         }
 
         // Build binary node
-        res.root = new_bin_op_node(op, res.root, right_n.root);
+        res.root = new_bin_op_node(op, res.root, right.root);
     }
 
     // Correct exit
     return res;
 }
 
-ParserResult fact(Parser* p)
+ParserResult nval(Parser* p)
 {
     ParserResult res;
 
@@ -299,13 +338,15 @@ ParserResult fact(Parser* p)
             return res;
 
         // Consume right parenthesis
-        if (p->current->type != TT_RPA)
+        pos = (p->current) ? 
+            p->current->pos : get_next_position(p->tok_list[p->tok_count - 1]);
+        if (p->current == NULL || p->current->type != TT_RPA)
         {
             free_node(res.root);
             res.root = NULL;
             res.err = new_error(
                 InvalidSyntaxError,
-                p->current->pos,
+                pos,
                 "Expected ')'"
             );
             return res;
@@ -316,38 +357,11 @@ ParserResult fact(Parser* p)
         return res;
     }
 
-    // Consume signed value
-    const Token* sign = NULL;
-    if (p->current->type == TT_ADD || p->current->type == TT_SUB)
-    {
-        // Consume sign
-        sign = p->current;
-        if (advance_parser(p) == NULL)
-        {
-            res.root = NULL;
-            res.err = new_error(
-                InvalidSyntaxError,
-                get_next_position(sign),
-                "Expected expression"
-            );
-            return res;
-        }
-
-        // Consume factor
-        res = fact(p);
-        if (res.root == NULL)
-            return res;
-
-        // Correct exit
-        res.root = new_un_op_node(sign, res.root);
-        return res;
-    }
-
-    // Consume numeric value
-    return nval(p);
+    // Consume numeric literal
+    return nlit(p);
 }
 
-ParserResult nval(Parser* p)
+ParserResult nlit(Parser* p)
 {
     ParserResult res;
 

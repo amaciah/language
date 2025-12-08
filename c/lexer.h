@@ -15,7 +15,6 @@ typedef struct lexer
     int row;
     int col;
     char current;
-    Error err;
 } Lexer;
 
 /**
@@ -26,6 +25,7 @@ typedef struct lexer_result
     const Token** tokens;
     int current;
     int size;
+    Error err;
 } LexerResult;
 
 /**
@@ -47,13 +47,6 @@ Lexer new_lexer(const char* text);
  * @note Remember to call ```free_lexer_result()``` afterwards
  */
 LexerResult new_lexer_result(Lexer l);
-
-/**
- * Returns an "error result" containing no tokens
- * 
- * @return The error lexer result
- */
-LexerResult error_lexer_result();
 
 /**
  * Finalizes a lexer result, removing unused memory
@@ -101,8 +94,6 @@ Position get_current_pos(const Lexer* l);
  * @param l The lexer
  * 
  * @return The number token on success, or ```NULL``` in case of error
- * 
- * @note Sets ```l.err``` in case of error
  */
 const Token* get_number(Lexer* l);
 
@@ -111,10 +102,11 @@ const Token* get_number(Lexer* l);
  * 
  * @param l The lexer
  * 
- * @return The result of the analysis, or an "error result" in case of error
+ * @return The result of the analysis
  * 
- * @note An error result's ```tokens``` field is ```NULL```
- * @note Sets ```l.err``` in case of error
+ * @note In case of error, the ```tokens``` field is ```NULL```
+ * and the ```err``` field contains the error
+ * @note Remember to call ```free_lexer_result()``` afterwards
  */
 LexerResult tokenize(Lexer* l);
 

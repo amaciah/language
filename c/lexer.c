@@ -25,7 +25,7 @@ int is_digit(char c)
  */
 int is_alpha(char c)
 {
-    return (c >= 'A' && c <= 'z');
+    return ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'));
 }
 
 
@@ -33,13 +33,14 @@ int is_alpha(char c)
 
 Lexer new_lexer(const char* text)
 {
-    Lexer l = { .text = text, .pos = -1, .row = 1, .col = 0, .current = '\0', };
+    Lexer l = { 
+        .text = text, 
+        .pos = -1, 
+        .row = 1, 
+        .col = 0, 
+        .current = '\0', 
+    };
     advance_lexer(&l);
-    l.err = new_error(
-        IllegalCharError,
-        get_current_pos(&l),
-        "Unexpected end of file"
-    );
     return l;
 }
 
@@ -47,18 +48,10 @@ LexerResult new_lexer_result(Lexer l)
 {
     LexerResult r;
     int size = strlen(l.text);
-    r.tokens = (const Token**) malloc(size * sizeof(const Token*));
-    for (int i = 0; i < size; i++)
-        r.tokens[i] = NULL;
+    r.tokens = (const Token**) calloc(size, sizeof(const Token*));
     r.current = 0;
     r.size = size;
     return r;
-}
-
-LexerResult error_lexer_result()
-{
-    LexerResult e = { .tokens = NULL, .current = -1, .size = -1 };
-    return e;
 }
 
 void trim_lexer_result(LexerResult* r)
@@ -97,19 +90,13 @@ void advance_lexer(Lexer* l)
 
 Position get_current_pos(const Lexer* l)
 {
-    Position res = { l->row, l->col };
-    return res;
+    return (Position) { l->row, l->col };
 }
 
 const Token* get_number(Lexer* l)
 {
     char value[16];
     int dot_count = 0, i;
-    Error e = new_error(
-        IllegalCharError,
-        get_current_pos(l),
-        "Not a valid number format"
-    );
 
     for (i = 0; is_digit(l->current) || l->current == '.'; i++)
     {
@@ -128,16 +115,12 @@ const Token* get_number(Lexer* l)
     {
     case 0:
         return new_token(get_current_pos(l), TT_INT, value);
-        break;
 
     case 1:
         return new_token(get_current_pos(l), TT_FLT, value);
-        break;
     
     default:
-        l->err = e;
         return NULL;
-        break;
     }
 }
 
@@ -211,7 +194,12 @@ LexerResult tokenize(Lexer* l)
                 if (!t)
                 {
                     free_lexer_result(&res);
-                    return error_lexer_result();
+                    res.err = new_error(
+                        IllegalCharError,
+                        get_current_pos(l),
+                        "Not a valid number format"
+                    );
+                    return res;
                 }
                 append_token_to_result(&res, t);
             }
@@ -221,14 +209,13 @@ LexerResult tokenize(Lexer* l)
             {
                 char details[MAX_ERR_DET_LEN];
                 sprintf(details, "Invalid character '%c'", l->current);
-                Error e = new_error(
+                free_lexer_result(&res);
+                res.err = new_error(
                     IllegalCharError,
                     get_current_pos(l),
                     details
                 );
-                l->err = e;
-                free_lexer_result(&res);
-                return error_lexer_result();
+                return res;
             }
 
             break;

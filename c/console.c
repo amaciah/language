@@ -47,9 +47,9 @@ int main()
         Lexer l = new_lexer(text);
         LexerResult lr = tokenize(&l);
 
-        if (lr.tokens == NULL)
+        if (lr.tokens == NULL && lr.size != 0)
         {
-            print_error(l.err);
+            print_error(lr.err);
             free_lexer_result(&lr);
             continue;
         }

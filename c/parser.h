@@ -50,6 +50,8 @@ const Token* advance_parser(Parser* p);
  * 
  * @note In case of error, the ```root``` field is ```NULL```
  * and the ```err``` field contains the error
+ * @note Remember to call ```free_node()``` on the root afterwards
+ * if it is not ```NULL```
  */
 ParserResult parse(Parser* p);
 
