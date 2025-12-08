@@ -1,4 +1,5 @@
 import math
+import os
 from typing import List
 from lexer import Lexer
 from parser_ import Parser
@@ -19,7 +20,7 @@ def print_test_summary(pass_count: int, test_count: int, fails: List) -> None:
             print(f"[X] {entry} -> {result} (Expected: {expected})")
 
 
-with open(TEST_FILE, 'r') as file:
+with open(os.path.join(os.path.dirname(__file__), TEST_FILE), 'r') as file:
     lines = file.readlines()
     
 fails = []
