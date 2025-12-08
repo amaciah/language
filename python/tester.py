@@ -1,8 +1,11 @@
 import math
 from typing import List
-from python.lexer import Lexer
-from python.parser_ import Parser
-from python.interpreter import Interpreter
+from lexer import Lexer
+from parser_ import Parser
+from interpreter import Interpreter
+
+
+TEST_FILE = '../tests.txt'
 
 
 def print_test_header(name: str) -> None:
@@ -16,7 +19,7 @@ def print_test_summary(pass_count: int, test_count: int, fails: List) -> None:
             print(f"[X] {entry} -> {result} (Expected: {expected})")
 
 
-with open('tests.txt', 'r') as file:
+with open(TEST_FILE, 'r') as file:
     lines = file.readlines()
     
 fails = []

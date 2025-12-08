@@ -1,6 +1,6 @@
 
 from typing import List, Callable
-from .base import *
+from base import *
 
 
 # ----- PARSER -----
@@ -10,7 +10,6 @@ class Parser:
         self.tokens = tokens
         self.idx = -1
         self.current_tok = None
-        self.advance()
 
     def advance(self) -> Token:
         self.idx += 1
@@ -29,6 +28,13 @@ class Parser:
 
         `prog ::= expr`
         """
+        
+        # Advance to first token
+        if self.advance() == None:
+            return None, InvalidSyntaxError(
+                (1, 1),
+                "Unexpected end of input"
+            )
         
         # Consume an expression
         expr, err = self.expr()
@@ -140,8 +146,9 @@ class Parser:
                 return None, err
             
             # Consume right parenthesis
-            pos = self.current_tok.pos if self.current_tok else expr.pos 
-            if self.current_tok is None or self.current_tok.type != TT_RPA:
+            pos = self.current_tok.pos if self.current_tok \
+                else self.tokens[-1].get_next_position()
+            if self.current_tok == None or self.current_tok.type != TT_RPA:
                 return None, InvalidSyntaxError(
                     pos,
                     "Expected ')'"

@@ -17,6 +17,7 @@ TT_MOD = 'PERCENT'
 TT_POW = 'CARET'
 TT_LPA = 'LPAREN'
 TT_RPA = 'RPAREN'
+TT_EOF = 'EOF'
 
 class Token:
     def __init__(self, position: Tuple[int, int], tok_type: str, value: str = None) -> None:
@@ -134,7 +135,7 @@ class Error:
         self.details = details
 
     def __repr__(self) -> str:
-        return f"{self.type} at line {self.pos[0]}, char {self.pos[1]}: {self.details}"
+        return f"{self.type} at line {self.pos[0]}, column {self.pos[1]}: {self.details}"
     
 class IllegalCharError(Error):
     def __init__(self, position: Tuple[int, int], details: str) -> None:
